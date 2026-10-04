@@ -1,0 +1,17 @@
+{
+    "name": "GridLearn.Unity.Editor",
+    "rootNamespace": "GridLearn.Unity.Editor",
+    "references": [
+        "GridLearn.Core",
+        "GridLearn.Unity"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
