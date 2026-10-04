@@ -115,11 +115,11 @@ Default settings:
 * epsilon decreases linearly to `0.05` over `400` episodes
 * epsilon remains at `0.05` afterwards
 
-When exploring, choose uniformly from all actions.
+`ChooseAction(state, epsilon)` is the epsilon-greedy training selector: it explores randomly with probability `epsilon` and otherwise exploits the best learned action (using `BestAction` for tie-breaking). It may use randomness.
 
-When exploiting, choose the action with the highest Q-value. If several actions tie, choose randomly among the tied best actions.
+`BestAction(state)` is deterministic greedy evaluation: it returns the action with the highest Q-value, breaking ties by choosing the lowest-index action. This makes `Watch` mode and the learning tests reproducible.
 
-Use a seeded `System.Random`. Do not use `UnityEngine.Random` for learning.
+Use a seeded `System.Random` for `ChooseAction`. Do not use `UnityEngine.Random` for learning.
 
 ## Training
 
