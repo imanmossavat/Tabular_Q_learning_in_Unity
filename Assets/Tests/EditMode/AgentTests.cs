@@ -59,11 +59,59 @@ namespace GridLearn
         }
 
         [Test]
-        public void BestAction_IsDeterministicWithTies()
+        public void BestAction_ReturnsActionWithHighestQValue()
         {
-            QAgent agent = new QAgent(1, Moves.Count, config, 99);
-            for (int i = 0; i < 50; i++)
-                Assert.AreEqual(Move.Up, agent.BestAction(0));
+            QAgent agent = new QAgent(1, Moves.Count, config, 0);
+            agent.Q[0, (int)Move.Right] = 5f;
+            agent.Q[0, (int)Move.Up] = 2f;
+            agent.Q[0, (int)Move.Down] = 2f;
+            agent.Q[0, (int)Move.Left] = 1f;
+
+            Assert.AreEqual(Move.Right, agent.BestAction(0));
+        }
+
+        [Test]
+        public void BestAction_BreaksTiesRandomly()
+        {
+            QAgent agent = new QAgent(1, Moves.Count, config, 123);
+            bool[] chosen = new bool[Moves.Count];
+            for (int i = 0; i < 200; i++)
+                chosen[(int)agent.BestAction(0)] = true;
+
+            int distinct = 0;
+            for (int a = 0; a < Moves.Count; a++)
+                if (chosen[a]) distinct++;
+
+            Assert.Greater(distinct, 1, "BestAction should break ties randomly.");
+        }
+
+        [Test]
+        public void BestValidAction_PrefersBestAmongValidMoves()
+        {
+            QAgent agent = new QAgent(1, Moves.Count, config, 0);
+            agent.Q[0, (int)Move.Left] = 5f;
+            agent.Q[0, (int)Move.Right] = 3f;
+            agent.Q[0, (int)Move.Up] = 1f;
+            agent.Q[0, (int)Move.Down] = 1f;
+
+            Move best = agent.BestValidAction(0, new[] { Move.Right, Move.Up, Move.Down });
+            Assert.AreEqual(Move.Right, best);
+        }
+
+        [Test]
+        public void BestValidAction_IgnoresInvalidMovesEvenWhenTied()
+        {
+            QAgent agent = new QAgent(1, Moves.Count, config, 123);
+            for (int a = 0; a < Moves.Count; a++)
+                agent.Q[0, a] = 1f;
+
+            bool[] chosen = new bool[Moves.Count];
+            for (int i = 0; i < 100; i++)
+                chosen[(int)agent.BestValidAction(0, new[] { Move.Right, Move.Up, Move.Down })] = true;
+
+            Assert.IsFalse(chosen[(int)Move.Left], "BestValidAction should not pick an invalid move.");
+            Assert.IsTrue(chosen[(int)Move.Right] || chosen[(int)Move.Up] || chosen[(int)Move.Down],
+                "BestValidAction should pick one of the valid moves.");
         }
     }
 }

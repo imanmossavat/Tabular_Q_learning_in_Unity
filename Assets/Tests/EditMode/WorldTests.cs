@@ -97,5 +97,18 @@ namespace GridLearn
             Assert.IsFalse(t);
             Assert.IsTrue(time);
         }
+
+        [Test]
+        public void GetValidMoves_ExcludesWallsAndEdges()
+        {
+            Level level = Level.Parse("S.#\n..G");
+            GridWorld world = new GridWorld(level, config);
+
+            Move[] valid = world.GetValidMoves(0);
+            CollectionAssert.AreEquivalent(new[] { Move.Right, Move.Down }, valid);
+
+            Move[] middle = world.GetValidMoves(1);
+            CollectionAssert.AreEquivalent(new[] { Move.Left, Move.Down }, middle);
+        }
     }
 }

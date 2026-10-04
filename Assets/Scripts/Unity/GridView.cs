@@ -54,7 +54,7 @@ namespace GridLearn.Unity
             agentRenderer.transform.localPosition = CellPosition(x, y);
         }
 
-        public void ShowPolicy(QAgent agent)
+        public void ShowPolicy(QAgent agent, GridWorld world)
         {
             ClearArrows();
             if (level == null || agent == null)
@@ -69,7 +69,7 @@ namespace GridLearn.Unity
                     if (tile == Tile.Wall || tile == Tile.Hazard || tile == Tile.Goal)
                         continue;
 
-                    Move best = agent.BestAction(state);
+                    Move best = agent.BestValidAction(state, world.GetValidMoves(state));
                     GameObject arrow = new GameObject("Arrow");
                     arrow.transform.SetParent(transform, false);
                     arrow.transform.localPosition = CellPosition(x, y);

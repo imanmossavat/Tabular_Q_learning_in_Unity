@@ -37,18 +37,73 @@ namespace GridLearn
         public Move BestAction(int state)
         {
             float best = Q[state, 0];
-            int bestIndex = 0;
+            int tieCount = 1;
+
             for (int a = 1; a < ActionCount; a++)
             {
                 if (Q[state, a] > best)
                 {
                     best = Q[state, a];
-                    bestIndex = a;
+                    tieCount = 1;
+                }
+                else if (Q[state, a] == best)
+                {
+                    tieCount++;
                 }
             }
-            return (Move)bestIndex;
+
+            int pick = tieCount == 1 ? 0 : Random.Next(tieCount);
+            int seen = 0;
+            for (int a = 0; a < ActionCount; a++)
+            {
+                if (Q[state, a] == best)
+                {
+                    if (seen == pick)
+                        return (Move)a;
+                    seen++;
+                }
+            }
+
+            return Move.Up;
         }
 
+
+        public Move BestValidAction(int state, Move[] validMoves)
+        {
+            if (validMoves == null || validMoves.Length == 0)
+                return BestAction(state);
+
+            float best = Q[state, (int)validMoves[0]];
+            int tieCount = 1;
+
+            for (int i = 1; i < validMoves.Length; i++)
+            {
+                float q = Q[state, (int)validMoves[i]];
+                if (q > best)
+                {
+                    best = q;
+                    tieCount = 1;
+                }
+                else if (q == best)
+                {
+                    tieCount++;
+                }
+            }
+
+            int pick = tieCount == 1 ? 0 : Random.Next(tieCount);
+            int seen = 0;
+            for (int i = 0; i < validMoves.Length; i++)
+            {
+                if (Q[state, (int)validMoves[i]] == best)
+                {
+                    if (seen == pick)
+                        return validMoves[i];
+                    seen++;
+                }
+            }
+
+            return validMoves[0];
+        }
         public void Learn(int state, Move action, float reward, int nextState, bool terminal)
         {
             int a = (int)action;

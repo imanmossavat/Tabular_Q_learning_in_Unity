@@ -42,9 +42,11 @@ namespace GridLearn.Unity
 
         [Header("Extras")]
         [SerializeField] Button policyButton;
-        [SerializeField] Button saveButton;
-        [SerializeField] Button loadButton;
         [SerializeField] Button csvButton;
+        [SerializeField] Button helpButton;
+
+        [Header("Help")]
+        [SerializeField] GameObject helpPanel;
 
         bool showingPolicy;
 
@@ -82,6 +84,7 @@ namespace GridLearn.Unity
             EnsureEventSystem();
             ConfigureHud();
             EnsureExtraButtons();
+            EnsureHelpPanel();
         }
 
         void Update()
@@ -97,23 +100,23 @@ namespace GridLearn.Unity
 
         void WireButtons()
         {
-            trainButton.onClick.AddListener(StartTrain);
-            watchButton.onClick.AddListener(StartWatch);
-            playButton.onClick.AddListener(StartPlay);
-            resetButton.onClick.AddListener(ResetAll);
-            fastButton.onClick.AddListener(FastTrain);
+            trainButton.onClick.AddListener(() => { DeselectUi(); StartTrain(); });
+            watchButton.onClick.AddListener(() => { DeselectUi(); StartWatch(); });
+            playButton.onClick.AddListener(() => { DeselectUi(); StartPlay(); });
+            resetButton.onClick.AddListener(() => { DeselectUi(); ResetAll(); });
+            fastButton.onClick.AddListener(() => { DeselectUi(); FastTrain(); });
         }
 
         public void StartTrain()
         {
             SetMode(ControlMode.Train);
-            runningRoutine = StartCoroutine(TrainLoop());
+            runningRoutine = StartCoroutine(TrainOneEpisode());
         }
 
         public void StartWatch()
         {
             SetMode(ControlMode.Watch);
-            runningRoutine = StartCoroutine(WatchLoop());
+            runningRoutine = StartCoroutine(WatchOneEpisode());
         }
 
         public void StartPlay()
@@ -143,7 +146,7 @@ namespace GridLearn.Unity
             for (int i = 0; i < fastEpisodes; i++)
                 RunEpisode();
             world.Reset();
-            gridView.ShowPolicy(agent);
+            gridView.ShowPolicy(agent, world);
             showingPolicy = true;
             UpdatePolicyButtonText();
             gridView.SetAgentPosition(world.AgentX, world.AgentY);
@@ -184,90 +187,104 @@ namespace GridLearn.Unity
             return record;
         }
 
-        IEnumerator TrainLoop()
+        IEnumerator TrainOneEpisode()
         {
+            world.Reset();
+            float totalReward = 0f;
+            int steps = 0;
+
             while (mode == ControlMode.Train)
             {
-                world.Reset();
-                float totalReward = 0f;
-                int steps = 0;
-
-                while (mode == ControlMode.Train)
-                {
-                    float epsilon = agent.Epsilon(episodeCount + 1);
-                    Move action = agent.ChooseAction(world.State, epsilon);
-                    int state = world.State;
-                    var (nextState, reward, terminal, timeout) = world.Step(action);
-                    agent.Learn(state, action, reward, nextState, terminal);
-                    totalReward += reward;
-                    steps++;
-                    lastReward = reward;
-                    gridView.SetAgentPosition(world.AgentX, world.AgentY);
-                    UpdateHUD();
-                    if (terminal || timeout)
-                        break;
-                    yield return new WaitForSeconds(stepInterval);
-                }
-
-                if (mode != ControlMode.Train)
-                    yield break;
-
-                episodeCount++;
-                EpisodeRecord record = new EpisodeRecord
-                {
-                    episode = episodeCount,
-                    totalReward = totalReward,
-                    steps = steps,
-                    reachedGoal = world.State == level.GoalState,
-                    epsilon = agent.Epsilon(episodeCount)
-                };
-                records.Add(record);
-                lastReward = totalReward;
+                float epsilon = agent.Epsilon(episodeCount + 1);
+                Move action = agent.ChooseAction(world.State, epsilon);
+                int state = world.State;
+                var (nextState, reward, terminal, timeout) = world.Step(action);
+                agent.Learn(state, action, reward, nextState, terminal);
+                totalReward += reward;
+                steps++;
+                lastReward = reward;
+                gridView.SetAgentPosition(world.AgentX, world.AgentY);
                 UpdateHUD();
+                if (terminal || timeout)
+                    break;
                 yield return new WaitForSeconds(stepInterval);
             }
+
+            episodeCount++;
+            EpisodeRecord record = new EpisodeRecord
+            {
+                episode = episodeCount,
+                totalReward = totalReward,
+                steps = steps,
+                reachedGoal = world.State == level.GoalState,
+                epsilon = agent.Epsilon(episodeCount)
+            };
+            records.Add(record);
+            lastReward = totalReward;
+            UpdateHUD();
+
+            runningRoutine = null;
+            SetMode(ControlMode.Play);
         }
 
-        IEnumerator WatchLoop()
+        IEnumerator WatchOneEpisode()
         {
-            while (mode == ControlMode.Watch)
+            float totalReward = 0f;
+
+            while (mode == ControlMode.Watch && !world.IsTerminal)
             {
-                world.Reset();
-                while (mode == ControlMode.Watch && !world.IsTerminal)
-                {
-                    Move action = agent.BestAction(world.State);
-                    var (_, reward, terminal, timeout) = world.Step(action);
-                    lastReward = reward;
-                    gridView.SetAgentPosition(world.AgentX, world.AgentY);
-                    UpdateHUD();
-                    if (terminal || timeout)
-                        break;
-                    yield return new WaitForSeconds(stepInterval);
-                }
-                yield return new WaitForSeconds(stepInterval * 2f);
+                Move action = agent.BestValidAction(world.State, world.GetValidMoves(world.State));
+                var (_, reward, terminal, timeout) = world.Step(action);
+                totalReward += reward;
+                lastReward = reward;
+                gridView.SetAgentPosition(world.AgentX, world.AgentY);
+                UpdateHUD();
+                if (terminal || timeout)
+                    break;
+                yield return new WaitForSeconds(stepInterval);
             }
+
+            lastReward = totalReward;
+            UpdateHUD();
+
+            runningRoutine = null;
+            SetMode(ControlMode.Play);
         }
 
         void HandlePlayInput()
         {
-            if (world == null || world.IsTerminal)
+            if (world == null)
                 return;
 
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (world.IsTerminal)
+            {
+                ResetToStart();
                 return;
+            }
 
             Move? move = null;
-            if (keyboard.upArrowKey.wasPressedThisFrame) move = Move.Up;
-            else if (keyboard.downArrowKey.wasPressedThisFrame) move = Move.Down;
-            else if (keyboard.leftArrowKey.wasPressedThisFrame) move = Move.Left;
-            else if (keyboard.rightArrowKey.wasPressedThisFrame) move = Move.Right;
+
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                if (keyboard.upArrowKey.wasPressedThisFrame) move = Move.Up;
+                else if (keyboard.downArrowKey.wasPressedThisFrame) move = Move.Down;
+                else if (keyboard.leftArrowKey.wasPressedThisFrame) move = Move.Left;
+                else if (keyboard.rightArrowKey.wasPressedThisFrame) move = Move.Right;
+            }
 
             if (!move.HasValue)
                 return;
 
             var (_, reward, _, _) = world.Step(move.Value);
             lastReward = reward;
+            gridView.SetAgentPosition(world.AgentX, world.AgentY);
+            UpdateHUD();
+        }
+
+        void ResetToStart()
+        {
+            world.Reset();
             gridView.SetAgentPosition(world.AgentX, world.AgentY);
             UpdateHUD();
         }
@@ -286,6 +303,12 @@ namespace GridLearn.Unity
                 StopCoroutine(runningRoutine);
                 runningRoutine = null;
             }
+        }
+
+        void DeselectUi()
+        {
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(null);
         }
 
         void UpdateHUD()
@@ -320,6 +343,7 @@ namespace GridLearn.Unity
             }
             return (float)goals / count;
         }
+
         void EnsureEventSystem()
         {
             if (EventSystem.current == null)
@@ -369,7 +393,7 @@ namespace GridLearn.Unity
 
         void EnsureExtraButtons()
         {
-            if (policyButton != null && saveButton != null && loadButton != null && csvButton != null)
+            if (policyButton != null && csvButton != null && helpButton != null)
             {
                 WireExtraButtons();
                 return;
@@ -387,17 +411,23 @@ namespace GridLearn.Unity
             if (template == null)
                 return;
 
-            policyButton = Instantiate(template, panel);
-            SetupExtraButton(policyButton, "PolicyButton", new Vector2(360f, -90f), "Show Policy");
+            if (policyButton == null)
+            {
+                policyButton = Instantiate(template, panel);
+                SetupExtraButton(policyButton, "PolicyButton", new Vector2(-120f, -135f), "Show Policy");
+            }
 
-            saveButton = Instantiate(template, panel);
-            SetupExtraButton(saveButton, "SaveButton", new Vector2(-120f, -135f), "Save");
+            if (csvButton == null)
+            {
+                csvButton = Instantiate(template, panel);
+                SetupExtraButton(csvButton, "CsvButton", new Vector2(0f, -135f), "CSV");
+            }
 
-            loadButton = Instantiate(template, panel);
-            SetupExtraButton(loadButton, "LoadButton", new Vector2(0f, -135f), "Load");
-
-            csvButton = Instantiate(template, panel);
-            SetupExtraButton(csvButton, "CsvButton", new Vector2(120f, -135f), "CSV");
+            if (helpButton == null)
+            {
+                helpButton = Instantiate(template, panel);
+                SetupExtraButton(helpButton, "HelpButton", new Vector2(120f, -135f), "Help");
+            }
 
             WireExtraButtons();
             UpdatePolicyButtonText();
@@ -415,17 +445,16 @@ namespace GridLearn.Unity
 
         void WireExtraButtons()
         {
-            policyButton.onClick.AddListener(TogglePolicy);
-            saveButton.onClick.AddListener(SaveQTable);
-            loadButton.onClick.AddListener(LoadQTable);
-            csvButton.onClick.AddListener(ExportCsv);
+            policyButton.onClick.AddListener(() => { DeselectUi(); TogglePolicy(); });
+            csvButton.onClick.AddListener(() => { DeselectUi(); ExportCsv(); });
+            helpButton.onClick.AddListener(() => { DeselectUi(); ToggleHelp(); });
         }
 
         void TogglePolicy()
         {
             showingPolicy = !showingPolicy;
             if (showingPolicy)
-                gridView.ShowPolicy(agent);
+                gridView.ShowPolicy(agent, world);
             else
                 gridView.ClearPolicy();
             UpdatePolicyButtonText();
@@ -436,6 +465,62 @@ namespace GridLearn.Unity
             SetButtonLabel(policyButton, showingPolicy ? "Hide Policy" : "Show Policy");
         }
 
+        void EnsureHelpPanel()
+        {
+            if (helpPanel != null)
+                return;
+
+            Canvas canvas = FindAnyObjectByType<Canvas>();
+            if (canvas == null)
+                return;
+
+            helpPanel = new GameObject("HelpPanel");
+            helpPanel.transform.SetParent(canvas.transform, false);
+
+            RectTransform rt = helpPanel.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(800f, 520f);
+
+            Image bg = helpPanel.AddComponent<Image>();
+            bg.color = new Color(0.1f, 0.1f, 0.1f, 0.95f);
+
+            GameObject textGo = new GameObject("HelpText");
+            textGo.transform.SetParent(helpPanel.transform, false);
+            RectTransform textRt = textGo.AddComponent<RectTransform>();
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = new Vector2(20f, 20f);
+            textRt.offsetMax = new Vector2(-20f, -20f);
+
+            Text text = textGo.AddComponent<Text>();
+            text.font = episodeText != null && episodeText.font != null
+                ? episodeText.font
+                : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = 22;
+            text.color = Color.white;
+            text.alignment = TextAnchor.UpperLeft;
+            text.text =
+                "GridLearn controls\n\n" +
+                "Train – run one training episode using epsilon-greedy exploration.\n" +
+                "Watch – run one episode using the current best policy (no exploration).\n" +
+                "Play  – move the agent with the arrow keys.\n" +
+                "Reset – clear the Q-table and episode history.\n" +
+                "Fast  – train " + fastEpisodes + " episodes instantly.\n" +
+                "Show/Hide Policy – toggle arrows showing the best action for each cell.\n" +
+                "CSV   – export episode results to GridLearnEpisodes.csv.";
+
+            helpPanel.SetActive(false);
+        }
+
+        void ToggleHelp()
+        {
+            if (helpPanel == null)
+                return;
+            helpPanel.SetActive(!helpPanel.activeSelf);
+        }
+
         void SetButtonLabel(Button button, string label)
         {
             if (button == null)
@@ -443,58 +528,6 @@ namespace GridLearn.Unity
             Text text = button.GetComponentInChildren<Text>();
             if (text != null)
                 text.text = label;
-        }
-
-        void SaveQTable()
-        {
-            float[] values = new float[agent.StateCount * agent.ActionCount];
-            for (int s = 0; s < agent.StateCount; s++)
-                for (int a = 0; a < agent.ActionCount; a++)
-                    values[s * agent.ActionCount + a] = agent.Q[s, a];
-
-            QTableData data = new QTableData
-            {
-                states = agent.StateCount,
-                actions = agent.ActionCount,
-                values = values,
-                episode = episodeCount
-            };
-
-            string path = Path.Combine(Application.persistentDataPath, "GridLearnQTable.json");
-            File.WriteAllText(path, JsonUtility.ToJson(data));
-            Debug.Log($"Saved Q-table to {path}");
-        }
-
-        void LoadQTable()
-        {
-            string path = Path.Combine(Application.persistentDataPath, "GridLearnQTable.json");
-            if (!File.Exists(path))
-            {
-                Debug.LogWarning($"No saved Q-table found at {path}");
-                return;
-            }
-
-            QTableData data = JsonUtility.FromJson<QTableData>(File.ReadAllText(path));
-            if (data == null || data.states != agent.StateCount || data.actions != agent.ActionCount || data.values == null || data.values.Length != agent.StateCount * agent.ActionCount)
-            {
-                Debug.LogError("Saved Q-table does not match the current level.");
-                return;
-            }
-
-            StopRoutine();
-            for (int s = 0; s < agent.StateCount; s++)
-                for (int a = 0; a < agent.ActionCount; a++)
-                    agent.Q[s, a] = data.values[s * agent.ActionCount + a];
-
-            episodeCount = data.episode;
-            world.Reset();
-            int startX = level.StartState % level.Width;
-            int startY = level.StartState / level.Width;
-            gridView.SetAgentPosition(startX, startY);
-            if (showingPolicy)
-                gridView.ShowPolicy(agent);
-            UpdateHUD();
-            Debug.Log($"Loaded Q-table from {path}");
         }
 
         void ExportCsv()
@@ -509,15 +542,6 @@ namespace GridLearn.Unity
             string path = Path.Combine(Application.persistentDataPath, "GridLearnEpisodes.csv");
             File.WriteAllText(path, sb.ToString());
             Debug.Log($"Exported episode data to {path}");
-        }
-
-        [Serializable]
-        public class QTableData
-        {
-            public int states;
-            public int actions;
-            public float[] values;
-            public int episode;
         }
     }
 }

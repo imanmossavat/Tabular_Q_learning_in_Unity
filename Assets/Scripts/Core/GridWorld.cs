@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace GridLearn
 {
@@ -82,5 +83,35 @@ namespace GridLearn
 
             return (nextState, reward, terminal, timeout);
         }
+        public Move[] GetValidMoves(int state)
+        {
+            int x = state % Level.Width;
+            int y = state / Level.Width;
+            List<Move> valid = new List<Move>(Moves.Count);
+
+            foreach (Move move in Enum.GetValues(typeof(Move)))
+            {
+                int nx = x;
+                int ny = y;
+
+                switch (move)
+                {
+                    case Move.Up: ny--; break;
+                    case Move.Down: ny++; break;
+                    case Move.Left: nx--; break;
+                    case Move.Right: nx++; break;
+                }
+
+                if (nx < 0 || nx >= Level.Width || ny < 0 || ny >= Level.Height)
+                    continue;
+                if (Level.Tiles[ny * Level.Width + nx] == Tile.Wall)
+                    continue;
+
+                valid.Add(move);
+            }
+
+            return valid.ToArray();
+        }
+
     }
 }
