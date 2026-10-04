@@ -74,7 +74,7 @@ namespace GridLearn.Unity
             level = Level.Parse(levelText.text);
             world = new GridWorld(level, config);
             int states = level.Width * level.Height;
-            agent = new QAgent(states, 4, config, seed);
+            agent = new QAgent(states, Moves.Count, config, seed);
 
             gridView.Build(level);
             WireButtons();
@@ -126,7 +126,7 @@ namespace GridLearn.Unity
             StopRoutine();
             world.Reset();
             int states = level.Width * level.Height;
-            agent = new QAgent(states, 4, config, seed);
+            agent = new QAgent(states, Moves.Count, config, seed);
             records.Clear();
             episodeCount = 0;
             lastReward = 0f;
@@ -336,8 +336,8 @@ namespace GridLearn.Unity
             if (scaler != null)
             {
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1280f, 720f);
-                scaler.matchWidthOrHeight = 0.5f;
+                scaler.referenceResolution = new Vector2(1920f, 1080f);
+                scaler.matchWidthOrHeight = 0f;
             }
 
             RectTransform panel = episodeText != null ? episodeText.transform.parent as RectTransform : null;
