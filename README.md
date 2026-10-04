@@ -1,90 +1,105 @@
 # GridLearn
 
-A small Unity project where an agent learns to find its way across a grid by trial and error (Q-learning).
-You give the grid your own story and look, then watch the agent learn it, or play it yourself.
+**Build your own GridWorld in Unity. Have an AI agent learn to play it with tabular Q-learning.**
 
-> Status: working prototype. The Core logic, Unity scene, HUD and extras are implemented. See `docs/DESIGN.md` for the specification.
+GridLearn is a small, visual project for learning and experimenting with Q-learning. You create the world, give it a story, and choose its rewards. The agent learns from experience.
 
-## The idea
+A hazard could be a toxic spill, a monster, or a trap. A goal could be cheese, treasure, or a delivery point. The Q-learning algorithm stays the same.
 
-For the computer, the game is a grid of numbers. Each kind of tile gives a reward:
-a goal is good, a hazard is bad, mud costs a little. The agent does not know what these things *mean*.
-It only tries to get a higher score. You decide the meaning: a drone avoiding toxic spills, a mouse looking for cheese, a knight crossing a trap room.
+> **Status:** working prototype.
 
-## What you can do with it
+## How it works
 
-1. **Run it** and watch the agent learn.
-2. **Reskin it:** change names, sprites and colours in a Theme asset.
-3. **Change the rules:** edit the level file and the rewards. Does the agent still learn?
-4. **Inspect the policy:** press **Show Policy** to see the best action the agent learned for every cell.
-5. **Save and load** the learned Q-table, or **export** the episode history to a CSV file.
-6. **Test and explain:** measure how fast it learns, and explain why.
+The agent repeatedly:
+
+**state → action → reward → Q-table update**
+
+It does not know what the objects in the world mean. It learns which actions are useful from the rewards it receives.
+
+Because the Q-table stores values for each **state-action pair**, you can inspect what the agent has learned and see how its policy changes as it trains.
+
+## What you can do
+
+* **Train** the agent through repeated episodes.
+* **Watch** it follow its current learned policy.
+* **Play** the GridWorld yourself.
+* **Change the world** by editing a simple text level.
+* **Change the rewards** and see how behaviour changes.
+* **Change the look and story** using the Unity theme.
+* **Inspect the policy** with the policy arrows.
+* **Save and load** the learned Q-table.
+* **Export** episode results to CSV.
 
 ## Quick start
 
-1. Open the project in Unity 6000.x or later (2D template).
+1. Open the project in **Unity 6000.x or later**.
 2. Open `Assets/Scenes/GridLearn.unity`.
-3. Select the **Game** tab and pick **1280×720** or **Free Aspect**.
-4. Press **Play**.
-5. Use the top HUD buttons:
-   - **Train** – watch the agent learn one episode at a time.
-   - **Watch** – watch the agent follow its current best policy.
-   - **Play** – control the agent with the arrow keys.
-   - **Reset** – clear the learned Q-table and start over.
-   - **Fast** – run 100 training episodes instantly, then show the policy.
-   - **Show / Hide Policy** – toggle the arrow overlay.
-   - **Save / Load** – save the Q-table to disk or restore it.
-   - **CSV** – export the episode records to `GridLearnEpisodes.csv` in the persistent data path (logged to the Console).
+3. Press **Play**.
+4. Use the HUD:
 
-Levels are plain text files (see `Assets/Levels/level01.txt`):
+   * **Train**: train one episode.
+   * **Watch**: watch the current policy.
+   * **Play**: control the agent with the arrow keys.
+   * **Reset**: clear the Q-table.
+   * **Fast**: train 100 episodes.
+   * **Show / Hide Policy**: show the learned best action.
+   * **Save / Load**: save or restore the Q-table.
+   * **CSV**: export episode results.
 
-| Symbol | Meaning |
-|---|---|
-| `#` | wall |
-| `.` | empty |
-| `S` | start |
-| `G` | goal (episode ends, big reward) |
-| `H` | hazard (episode ends, big penalty) |
-| `m` | mud (costs extra, episode continues) |
+## GridWorld
 
-## Changing the level
+A GridWorld is a small world made of a grid of squares. The agent moves from square to square using simple actions such as up, down, left, and right. Each square can have different rules or rewards.
 
-1. Edit `Assets/Levels/level01.txt` (or create a new `.txt` file in `Assets/Levels/`).
-2. Make sure there is exactly one `S`, one `G`, all rows have the same length, and a path exists from `S` to `G` through non-wall cells.
-3. Select the **GameController** in the scene and drag the new level TextAsset into the **Level Text** field.
-4. Press **Play**.
+Levels are simple text files. Each character represents a tile:
 
-## Changing the theme
+| Tile | Meaning                 |
+| ---- | ----------------------- |
+| `S`  | Start                   |
+| `.`  | Empty floor             |
+| `m`  | Mud / costly terrain    |
+| `H`  | Hazard / terminal state |
+| `G`  | Goal / terminal state   |
+| `#`  | Wall                    |
 
-1. Select `Assets/Themes/DefaultTheme.asset`.
-2. Change colours or assign your own sprites.
-3. Press **Play**; the grid and agent use the new look immediately.
+See **[docs/GRIDWORLD.md](docs/GRIDWORLD.md)** for the full tile, reward, transition, and state details.
 
-## Running tests
+## Make your own world
 
-- **EditMode tests** (Core logic): open `Window > General > Test Runner`, choose **EditMode**, then **Run All**.
-- **PlayMode test** (scene loads and trains): choose **PlayMode** in the Test Runner, then **Run All**.
-- The tests can also be run from the command line with `Unity -batchmode -runTests -testPlatform EditMode` (or `PlayMode`).
+Edit:
+
+`Assets/Levels/level01.txt`
+
+You can create your own GridWorld using the available tiles, then give it your own visual style through:
+
+`Assets/Themes/DefaultTheme.asset`
+
+The learning code does not need to change.
 
 ## Project layout
 
+```text
+Assets/Scripts/Core/       Tabular Q-learning and GridWorld
+Assets/Scripts/Unity/      Unity presentation and interaction
+Assets/Levels/             Text-based GridWorld levels
+Assets/Themes/             Visual theme
+Assets/Tests/              EditMode and PlayMode tests
+
+docs/DESIGN.md             Project design
+docs/GRIDWORLD.md          GridWorld reference
+docs/TESTING.md            Testing checklist
+docs/ORIGIN.md             Project origin
 ```
-Assets/Scripts/Core/       the world and the learning (plain C#, no Unity code)
-Assets/Scripts/Unity/      showing it on screen, buttons, player control
-Assets/Tests/EditMode/     automatic tests for Core logic
-Assets/Tests/PlayMode/     automatic test for the scene
-Assets/Themes/             sprites, names and colours per tile type
-Assets/Levels/             level text files
-docs/DESIGN.md             the design
-docs/TESTING.md            short manual testing checklist
-docs/ORIGIN.md             where the code came from
-AGENTS.md                  instructions for the AI coding agent
-```
 
-## Licence and credits
+## Learn more
 
-Licence: MIT (see `LICENSE`). Copyright (c) 2026 Iman Mossavat.
+GridLearn uses **tabular Q-learning**, a model-free reinforcement learning algorithm introduced by Watkins (1989).
 
-The learning method is tabular Q-learning (Watkins, 1989; Sutton & Barto, *Reinforcement Learning: An Introduction*).
-The idea of a Unity grid world for teaching it was inspired by Unity Technologies' Q-GridWorld demo (2017).
-No code from that project is copied. The code is written independently from our own design; see `docs/ORIGIN.md`.
+The project is a small educational implementation, not a general-purpose reinforcement learning framework.
+
+The GridWorld teaching concept was inspired by Unity Technologies' Q-GridWorld demo (2017). No code from that project is copied. The implementation was written independently. See `docs/ORIGIN.md`.
+
+## Licence
+
+MIT License. See `LICENSE`.
+
+Copyright (c) 2026 Iman Mossavat.
