@@ -196,6 +196,14 @@ If practical, also show the value of the best action.
 
 The visualization should help a student connect the agent's behaviour to the Q-table. It should not become a separate complex system.
 
+### Persistence and export
+
+The student can save the learned Q-table to a JSON file and load it again later. The save includes the current episode count so the HUD stays consistent.
+
+The student can export the episode records to a CSV file with the columns: Episode, Steps, TotalReward, ReachedGoal, Epsilon.
+
+Both files are written to the application's persistent data path and logged to the Console.
+
 ## Expected behaviour
 
 For `Assets/Levels/level01.txt`:

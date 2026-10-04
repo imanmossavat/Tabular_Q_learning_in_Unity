@@ -488,7 +488,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a34e9f319b19740b4a22f08655ae509e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GridLearn.Unity::GridLearn.Unity.GridView
-  theme: {fileID: 0}
+  theme: {fileID: 11400000, guid: d536db21b625f4f2d9d749f9e66c815a, type: 2}
   cellSize: 1
 --- !u!4 &532899044
 Transform:

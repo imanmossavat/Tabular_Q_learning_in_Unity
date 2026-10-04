@@ -7,6 +7,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 namespace GridLearn.Unity.Editor
 {
@@ -36,6 +38,7 @@ namespace GridLearn.Unity.Editor
             GameObject gridGo = CreateGrid(theme);
             GameObject controllerGo = CreateController(levelAsset, gridGo.GetComponent<GridView>());
             CreateHUD(controllerGo.GetComponent<GameController>());
+            CreateEventSystem();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuildSettings(ScenePath);
@@ -114,7 +117,8 @@ namespace GridLearn.Unity.Editor
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             CanvasScaler scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.matchWidthOrHeight = 0.5f;
 
             GameObject panel = new GameObject("Panel", typeof(Image));
             panel.transform.SetParent(canvasGo.transform, false);
@@ -122,20 +126,24 @@ namespace GridLearn.Unity.Editor
             panelRt.anchorMin = new Vector2(0f, 1f);
             panelRt.anchorMax = new Vector2(1f, 1f);
             panelRt.pivot = new Vector2(0.5f, 1f);
-            panelRt.sizeDelta = new Vector2(0f, 120f);
+            panelRt.sizeDelta = new Vector2(0f, 190f);
             panel.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.9f);
 
-            Text episodeText = CreateText(panel.transform, "EpisodeText", "Episode: 0", new Vector2(-400f, -20f), new Vector2(180f, 30f), font);
-            Text epsilonText = CreateText(panel.transform, "EpsilonText", "Epsilon: 1.000", new Vector2(-200f, -20f), new Vector2(180f, 30f), font);
-            Text rewardText = CreateText(panel.transform, "RewardText", "Last reward: 0.00", new Vector2(0f, -20f), new Vector2(180f, 30f), font);
-            Text successText = CreateText(panel.transform, "SuccessText", "Success: 0%", new Vector2(200f, -20f), new Vector2(180f, 30f), font);
-            Text speedText = CreateText(panel.transform, "SpeedText", "Mode: Play", new Vector2(400f, -20f), new Vector2(180f, 30f), font);
+            Text episodeText = CreateText(panel.transform, "EpisodeText", "Episode: 0", new Vector2(-360f, -25f), new Vector2(160f, 34f), font);
+            Text epsilonText = CreateText(panel.transform, "EpsilonText", "Epsilon: 1.000", new Vector2(-180f, -25f), new Vector2(160f, 34f), font);
+            Text rewardText = CreateText(panel.transform, "RewardText", "Last reward: 0.00", new Vector2(0f, -25f), new Vector2(160f, 34f), font);
+            Text successText = CreateText(panel.transform, "SuccessText", "Success: 0%", new Vector2(180f, -25f), new Vector2(160f, 34f), font);
+            Text speedText = CreateText(panel.transform, "SpeedText", "Mode: Play", new Vector2(360f, -25f), new Vector2(160f, 34f), font);
 
-            Button trainButton = CreateButton(panel.transform, "Train", new Vector2(-240f, -80f), new Vector2(100f, 36f), font);
-            Button watchButton = CreateButton(panel.transform, "Watch", new Vector2(-120f, -80f), new Vector2(100f, 36f), font);
-            Button playButton = CreateButton(panel.transform, "Play", new Vector2(0f, -80f), new Vector2(100f, 36f), font);
-            Button resetButton = CreateButton(panel.transform, "Reset", new Vector2(120f, -80f), new Vector2(100f, 36f), font);
-            Button fastButton = CreateButton(panel.transform, "Fast", new Vector2(240f, -80f), new Vector2(100f, 36f), font);
+            Button trainButton = CreateButton(panel.transform, "Train", new Vector2(-240f, -90f), new Vector2(110f, 44f), font);
+            Button watchButton = CreateButton(panel.transform, "Watch", new Vector2(-120f, -90f), new Vector2(110f, 44f), font);
+            Button playButton = CreateButton(panel.transform, "Play", new Vector2(0f, -90f), new Vector2(110f, 44f), font);
+            Button resetButton = CreateButton(panel.transform, "Reset", new Vector2(120f, -90f), new Vector2(110f, 44f), font);
+            Button fastButton = CreateButton(panel.transform, "Fast", new Vector2(240f, -90f), new Vector2(110f, 44f), font);
+            Button policyButton = CreateButton(panel.transform, "Policy", new Vector2(360f, -90f), new Vector2(110f, 44f), font);
+            Button saveButton = CreateButton(panel.transform, "Save", new Vector2(-120f, -135f), new Vector2(110f, 44f), font);
+            Button loadButton = CreateButton(panel.transform, "Load", new Vector2(0f, -135f), new Vector2(110f, 44f), font);
+            Button csvButton = CreateButton(panel.transform, "CSV", new Vector2(120f, -135f), new Vector2(110f, 44f), font);
 
             SerializedObject so = new SerializedObject(controller);
             so.FindProperty("episodeText").objectReferenceValue = episodeText;
@@ -148,6 +156,10 @@ namespace GridLearn.Unity.Editor
             so.FindProperty("playButton").objectReferenceValue = playButton;
             so.FindProperty("resetButton").objectReferenceValue = resetButton;
             so.FindProperty("fastButton").objectReferenceValue = fastButton;
+            so.FindProperty("policyButton").objectReferenceValue = policyButton;
+            so.FindProperty("saveButton").objectReferenceValue = saveButton;
+            so.FindProperty("loadButton").objectReferenceValue = loadButton;
+            so.FindProperty("csvButton").objectReferenceValue = csvButton;
             so.ApplyModifiedProperties();
         }
 
@@ -163,7 +175,7 @@ namespace GridLearn.Unity.Editor
             Text text = go.GetComponent<Text>();
             text.text = label;
             text.font = font;
-            text.fontSize = 16;
+            text.fontSize = 20;
             text.color = Color.black;
             text.alignment = TextAnchor.MiddleCenter;
             return text;
@@ -191,6 +203,11 @@ namespace GridLearn.Unity.Editor
             textRt.sizeDelta = Vector2.zero;
 
             return button;
+        }
+
+        static void CreateEventSystem()
+        {
+            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         }
 
         static void AddToBuildSettings(string scenePath)

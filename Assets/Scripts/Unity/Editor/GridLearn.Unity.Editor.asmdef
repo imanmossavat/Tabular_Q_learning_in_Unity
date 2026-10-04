@@ -3,9 +3,13 @@
     "rootNamespace": "GridLearn.Unity.Editor",
     "references": [
         "GridLearn.Core",
-        "GridLearn.Unity"
+        "GridLearn.Unity",
+        "UnityEngine.UI",
+        "Unity.InputSystem"
     ],
-    "includePlatforms": ["Editor"],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

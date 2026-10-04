@@ -1,9 +1,14 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using GridLearn;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 namespace GridLearn.Unity
 {
@@ -34,6 +39,14 @@ namespace GridLearn.Unity
         [SerializeField] Button playButton;
         [SerializeField] Button resetButton;
         [SerializeField] Button fastButton;
+
+        [Header("Extras")]
+        [SerializeField] Button policyButton;
+        [SerializeField] Button saveButton;
+        [SerializeField] Button loadButton;
+        [SerializeField] Button csvButton;
+
+        bool showingPolicy;
 
         Level level;
         GridWorld world;
@@ -66,6 +79,9 @@ namespace GridLearn.Unity
             gridView.Build(level);
             WireButtons();
             UpdateHUD();
+            EnsureEventSystem();
+            ConfigureHud();
+            EnsureExtraButtons();
         }
 
         void Update()
@@ -114,6 +130,7 @@ namespace GridLearn.Unity
             records.Clear();
             episodeCount = 0;
             lastReward = 0f;
+            showingPolicy = false;
             gridView.ClearPolicy();
             gridView.SetAgentPosition(world.AgentX, world.AgentY);
             UpdateHUD();
@@ -127,6 +144,8 @@ namespace GridLearn.Unity
                 RunEpisode();
             world.Reset();
             gridView.ShowPolicy(agent);
+            showingPolicy = true;
+            UpdatePolicyButtonText();
             gridView.SetAgentPosition(world.AgentX, world.AgentY);
             if (records.Count > 0)
                 lastReward = records[records.Count - 1].totalReward;
@@ -300,6 +319,205 @@ namespace GridLearn.Unity
                     goals++;
             }
             return (float)goals / count;
+        }
+        void EnsureEventSystem()
+        {
+            if (EventSystem.current == null)
+            {
+                GameObject go = new GameObject("EventSystem");
+                go.AddComponent<EventSystem>();
+                go.AddComponent<InputSystemUIInputModule>();
+            }
+        }
+
+        void ConfigureHud()
+        {
+            CanvasScaler scaler = FindAnyObjectByType<CanvasScaler>();
+            if (scaler != null)
+            {
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1280f, 720f);
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+
+            RectTransform panel = episodeText != null ? episodeText.transform.parent as RectTransform : null;
+            if (panel != null)
+                panel.sizeDelta = new Vector2(0f, 150f);
+
+            Text[] labels = { episodeText, epsilonText, rewardText, successText, speedText };
+            foreach (Text label in labels)
+            {
+                if (label != null)
+                    label.fontSize = 20;
+            }
+
+            Button[] buttons = { trainButton, watchButton, playButton, resetButton, fastButton };
+            foreach (Button button in buttons)
+            {
+                if (button == null)
+                    continue;
+
+                RectTransform rt = button.GetComponent<RectTransform>();
+                if (rt != null)
+                    rt.sizeDelta = new Vector2(110f, 44f);
+
+                Text label = button.GetComponentInChildren<Text>();
+                if (label != null)
+                    label.fontSize = 20;
+            }
+        }
+
+        void EnsureExtraButtons()
+        {
+            if (policyButton != null && saveButton != null && loadButton != null && csvButton != null)
+            {
+                WireExtraButtons();
+                return;
+            }
+
+            Transform panel = episodeText != null ? episodeText.transform.parent : null;
+            if (panel == null)
+                return;
+
+            RectTransform panelRt = panel as RectTransform;
+            if (panelRt != null)
+                panelRt.sizeDelta = new Vector2(0f, 190f);
+
+            Button template = fastButton ?? trainButton;
+            if (template == null)
+                return;
+
+            policyButton = Instantiate(template, panel);
+            SetupExtraButton(policyButton, "PolicyButton", new Vector2(360f, -90f), "Show Policy");
+
+            saveButton = Instantiate(template, panel);
+            SetupExtraButton(saveButton, "SaveButton", new Vector2(-120f, -135f), "Save");
+
+            loadButton = Instantiate(template, panel);
+            SetupExtraButton(loadButton, "LoadButton", new Vector2(0f, -135f), "Load");
+
+            csvButton = Instantiate(template, panel);
+            SetupExtraButton(csvButton, "CsvButton", new Vector2(120f, -135f), "CSV");
+
+            WireExtraButtons();
+            UpdatePolicyButtonText();
+        }
+
+        void SetupExtraButton(Button button, string name, Vector2 position, string label)
+        {
+            button.name = name;
+            RectTransform rt = button.GetComponent<RectTransform>();
+            rt.anchoredPosition = position;
+            rt.sizeDelta = new Vector2(110f, 44f);
+            SetButtonLabel(button, label);
+            button.onClick.RemoveAllListeners();
+        }
+
+        void WireExtraButtons()
+        {
+            policyButton.onClick.AddListener(TogglePolicy);
+            saveButton.onClick.AddListener(SaveQTable);
+            loadButton.onClick.AddListener(LoadQTable);
+            csvButton.onClick.AddListener(ExportCsv);
+        }
+
+        void TogglePolicy()
+        {
+            showingPolicy = !showingPolicy;
+            if (showingPolicy)
+                gridView.ShowPolicy(agent);
+            else
+                gridView.ClearPolicy();
+            UpdatePolicyButtonText();
+        }
+
+        void UpdatePolicyButtonText()
+        {
+            SetButtonLabel(policyButton, showingPolicy ? "Hide Policy" : "Show Policy");
+        }
+
+        void SetButtonLabel(Button button, string label)
+        {
+            if (button == null)
+                return;
+            Text text = button.GetComponentInChildren<Text>();
+            if (text != null)
+                text.text = label;
+        }
+
+        void SaveQTable()
+        {
+            float[] values = new float[agent.StateCount * agent.ActionCount];
+            for (int s = 0; s < agent.StateCount; s++)
+                for (int a = 0; a < agent.ActionCount; a++)
+                    values[s * agent.ActionCount + a] = agent.Q[s, a];
+
+            QTableData data = new QTableData
+            {
+                states = agent.StateCount,
+                actions = agent.ActionCount,
+                values = values,
+                episode = episodeCount
+            };
+
+            string path = Path.Combine(Application.persistentDataPath, "GridLearnQTable.json");
+            File.WriteAllText(path, JsonUtility.ToJson(data));
+            Debug.Log($"Saved Q-table to {path}");
+        }
+
+        void LoadQTable()
+        {
+            string path = Path.Combine(Application.persistentDataPath, "GridLearnQTable.json");
+            if (!File.Exists(path))
+            {
+                Debug.LogWarning($"No saved Q-table found at {path}");
+                return;
+            }
+
+            QTableData data = JsonUtility.FromJson<QTableData>(File.ReadAllText(path));
+            if (data == null || data.states != agent.StateCount || data.actions != agent.ActionCount || data.values == null || data.values.Length != agent.StateCount * agent.ActionCount)
+            {
+                Debug.LogError("Saved Q-table does not match the current level.");
+                return;
+            }
+
+            StopRoutine();
+            for (int s = 0; s < agent.StateCount; s++)
+                for (int a = 0; a < agent.ActionCount; a++)
+                    agent.Q[s, a] = data.values[s * agent.ActionCount + a];
+
+            episodeCount = data.episode;
+            world.Reset();
+            int startX = level.StartState % level.Width;
+            int startY = level.StartState / level.Width;
+            gridView.SetAgentPosition(startX, startY);
+            if (showingPolicy)
+                gridView.ShowPolicy(agent);
+            UpdateHUD();
+            Debug.Log($"Loaded Q-table from {path}");
+        }
+
+        void ExportCsv()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Episode,Steps,TotalReward,ReachedGoal,Epsilon");
+            foreach (EpisodeRecord r in records)
+            {
+                sb.AppendLine($"{r.episode},{r.steps},{r.totalReward:F4},{(r.reachedGoal ? 1 : 0)},{r.epsilon:F4}");
+            }
+
+            string path = Path.Combine(Application.persistentDataPath, "GridLearnEpisodes.csv");
+            File.WriteAllText(path, sb.ToString());
+            Debug.Log($"Exported episode data to {path}");
+        }
+
+        [Serializable]
+        public class QTableData
+        {
+            public int states;
+            public int actions;
+            public float[] values;
+            public int episode;
         }
     }
 }
