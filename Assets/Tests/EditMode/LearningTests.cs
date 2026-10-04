@@ -49,7 +49,7 @@ namespace GridLearn
 
             for (int seed = 0; seed < 10; seed++)
             {
-                QAgent agent = new QAgent(stateCount, 4, config, seed);
+                QAgent agent = new QAgent(stateCount, Moves.Count, config, seed);
                 GridWorld world = new GridWorld(level, config);
                 Trainer trainer = new Trainer(world, agent);
 
@@ -82,7 +82,7 @@ namespace GridLearn
 
             for (int s = 0; s < stateCount; s++)
             {
-                for (int a = 0; a < 4; a++)
+                for (int a = 0; a < Moves.Count; a++)
                 {
                     Assert.AreEqual(first[s, a], second[s, a], 0.0001f,
                         $"Q-table differs at state {s}, action {a}.");
@@ -92,14 +92,14 @@ namespace GridLearn
 
         float[,] TrainAndCopy(Level level, Config config, int stateCount, int seed, int episodes)
         {
-            QAgent agent = new QAgent(stateCount, 4, config, seed);
+            QAgent agent = new QAgent(stateCount, Moves.Count, config, seed);
             GridWorld world = new GridWorld(level, config);
             Trainer trainer = new Trainer(world, agent);
             trainer.Run(episodes);
 
-            float[,] copy = new float[stateCount, 4];
+            float[,] copy = new float[stateCount, Moves.Count];
             for (int s = 0; s < stateCount; s++)
-                for (int a = 0; a < 4; a++)
+                for (int a = 0; a < Moves.Count; a++)
                     copy[s, a] = agent.Q[s, a];
             return copy;
         }

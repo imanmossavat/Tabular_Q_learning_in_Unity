@@ -95,7 +95,7 @@ namespace GridLearn
                 int x = state % level.Width;
                 int y = state / level.Width;
 
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < Moves.Count; i++)
                 {
                     int nx = x + dx[i];
                     int ny = y + dy[i];

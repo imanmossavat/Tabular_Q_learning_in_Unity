@@ -1,31 +1,12 @@
-# Origin of the code
+# Project origin
 
-This project was written from the specification in `docs/DESIGN.md`. No code was copied from other Q-learning or grid-world repositories, including Unity's Q-GridWorld demo.
+GridLearn is a teaching project for tabular Q-learning in Unity. It was created because many existing Unity examples for teaching Q-learning are more than nine years old.
 
-## What was written from the design
+The project was inspired by the idea of using a visual Unity GridWorld to teach reinforcement learning, including Unity Technologies' Q-GridWorld demo (2017). It is not a fork or port of that project.
 
-- `Assets/Scripts/Core/` – the level parser, grid world rules, Q-agent update, trainer and `Config` are direct implementations of the rules in `docs/DESIGN.md`.
-- `Assets/Scripts/Unity/GameController.cs` – implements the Train / Watch / Play modes, HUD, fast training, Q-table save/load, CSV export and policy overlay described in the design.
-- `Assets/Scripts/Unity/GridView.cs` – builds the grid, moves the agent sprite, and draws the policy arrows from the Q-table.
-- `Assets/Scripts/Unity/Theme.cs` – simple ScriptableObject colour/theme lookup.
-- `Assets/Scripts/Unity/Editor/SceneBuilder.cs` – editor-only helper that creates the default scene from the level asset and theme.
-- `Assets/Tests/` – cover level parsing, world rules, Q-learning updates, exploration, reproducibility and the scene load/training flow.
+The code in this repository was written from the project's own design and implementation, using standard Q-learning concepts from:
 
-## General knowledge used
+* Watkins, C. J. C. H. (1989), *Learning from Delayed Rewards*
+* Sutton, R. S. and Barto, A. G., *Reinforcement Learning: An Introduction*
 
-- Tabular Q-learning update rule (Watkins, 1989; Sutton & Barto, *Reinforcement Learning: An Introduction*). This is standard textbook material; the implementation here is written from the design equations.
-- Unity API usage (`MonoBehaviour`, `Canvas`, `Button`, `SpriteRenderer`, `JsonUtility`, `Input System`, etc.) from Unity documentation and general Unity development knowledge.
-
-## Originality check
-
-The following names belonging to other projects were searched and are **not present** in the code:
-
-- `InternalAgent`
-- `GridEnvironment`
-- `Environment`
-- `EnvironmentParameters`
-- `SendState`
-- `collectState`
-- `MiddleStep`
-
-No ML-Agents package or API is used.
+Unity APIs and general programming techniques were used according to standard Unity development practices.
