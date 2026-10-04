@@ -48,10 +48,10 @@ docs/DESIGN.md             the design
 AGENTS.md                  instructions for the AI coding agent
 ```
 
-## Ownership, licence and credits
+## Licence and credits
 
-Owner: _(fill in)_. Licence: _(decide before sharing)_.
+Licence: MIT (see `LICENSE`). Copyright (c) 2026 Iman Mossavat.
 
 The learning method is tabular Q-learning (Watkins, 1989; Sutton & Barto, *Reinforcement Learning: An Introduction*).
 The idea of a Unity grid world for teaching it was inspired by Unity Technologies' Q-GridWorld demo (2017).
-No code was copied from that project. The code was written independently from our own design.
+No code from that project is copied. The code is written independently from our own design.
